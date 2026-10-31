@@ -104,6 +104,19 @@ user has since filled in is a call to make: skip them always (and forget them
 from the manifest), or keep today's drift handling but leave them out of the
 exit code.
 
+### `krypt-core` and `krypt-cli` are not published to crates.io
+
+The `publish-crates` job in `.github/workflows/ci.yml` publishes only
+`krypt-platform` and `krypt-pkg`; the `krypt-core` / `krypt-cli` lines are
+commented out because their `gix` dependency points at the `mxaddict/gitoxide`
+fork for the `stash` and `merge` features, which crates.io's `gix` lacks, so
+`cargo publish` rejects the manifest. The job still reports success. As of the
+v0.5.0 release (2026-10-30), crates.io had `krypt-pkg` / `krypt-platform` at
+0.5.0 and `krypt-core` / `krypt-cli` at 0.2.0, so `cargo install krypt-cli`
+installs an old binary. AUR, brew, scoop and GitHub Releases are unaffected.
+Unblocked by upstream GitoxideLabs/gitoxide#2603: repoint `gix` at crates.io and
+restore the two `publish_or_skip` lines.
+
 ### Battery reading on macOS and Windows
 
 `battery::default_reader` returns `UnsupportedReader` off Linux, so
@@ -151,6 +164,16 @@ since logging a battery reading only works on Linux.
   attribute across, and renaming over a read-only destination fails on Windows,
   so a repo file marked read-only may deploy once and then fail on every later
   `link`. Inferred from the code; not reproduced.
+
+## Not bugs
+
+- **`paru` reinstalls the old `krypt-bin` right after a release.** The `aur-bin`
+  job pushes the new PKGBUILD to the AUR git repo, but the AUR RPC (and cgit)
+  kept reporting the previous version for a while after v0.5.0, and
+  `paru -S krypt-bin` trusted it and reinstalled 0.4.4.
+  `paru -S --redownload --rebuild krypt-bin` refetches the PKGBUILD and gets the
+  new one. To check what was actually pushed, read
+  `git ls-remote https://aur.archlinux.org/krypt-bin.git`, not the RPC.
 
 ## Coverage gaps
 
