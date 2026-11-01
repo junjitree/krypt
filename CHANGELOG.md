@@ -8,6 +8,17 @@ patch bumps.
 
 ## [Unreleased]
 
+### Fixed
+
+- **`krypt unlink` and `krypt relink` keep edited `[[template]]` destinations.**
+  0.5.0 taught `link` to keep a template filled in on the machine, but `unlink`
+  still treated one krypt had seeded as drift: `relink` exited 1 over it, and
+  `relink --force` deleted it in the unlink half so the link half reseeded the
+  blank template, wiping the per-machine values. `unlink` now leaves such a file
+  on disk and in the manifest, even with `--force`, and reports it as
+  `templates kept: N`; it no longer counts toward the exit code. Delete the
+  destination to seed it again. `UnlinkReport` gains `templates_kept`.
+
 ## [0.5.0] - 2026-10-30
 
 ### Changed

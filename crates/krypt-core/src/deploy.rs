@@ -28,7 +28,9 @@
 //!
 //! `unlink` is the inverse: iterate the manifest, hash each `dst`,
 //! delete only entries that still match the recorded hash (i.e.
-//! haven't drifted). With `force`, delete regardless of drift.
+//! haven't drifted). With `force`, delete regardless of drift, except
+//! an edited `[[template]]` destination, which `unlink` keeps (and keeps
+//! recorded) just as `link` does.
 //!
 //! `relink` = unlink + link.
 
@@ -93,7 +95,7 @@ pub struct DeployOpts {
     /// that doesn't match any prior manifest entry), except edited
     /// `[[template]]` destinations, which are always kept. On `unlink`,
     /// delete destinations even if they've drifted from the recorded
-    /// hash.
+    /// hash, again except edited `[[template]]` destinations.
     pub force: bool,
 }
 
@@ -136,6 +138,10 @@ pub struct UnlinkReport {
     /// Entries skipped because the destination drifted (use `force` to
     /// delete anyway).
     pub drift_skipped: usize,
+    /// `[[template]]` destinations left on disk and in the manifest because
+    /// they were edited on this machine since krypt seeded them. Not drift:
+    /// `force` keeps them too.
+    pub templates_kept: usize,
     /// Entries skipped because the destination is already gone.
     pub already_missing: usize,
 }
@@ -236,6 +242,9 @@ pub fn unlink(opts: &DeployOpts) -> Result<UnlinkReport, DeployError> {
                 report.already_missing += 1;
                 to_forget.push(d.dst);
             }
+            // Deleting it would hand `relink` a missing destination to
+            // reseed, wiping the per-machine values `link` keeps.
+            DriftStatus::Drifted if d.is_local_edit() => report.templates_kept += 1,
             DriftStatus::Drifted => {
                 if opts.force {
                     if !opts.dry_run {
@@ -628,6 +637,48 @@ dst = "${{HOME}}/a"
         let m = Manifest::load(&manifest_path).unwrap().unwrap();
         let entry = &m.entries[&home.path().join("a")];
         assert_eq!(entry.hash_dst, hash_file(&home.path().join("a")).unwrap());
+    }
+
+    #[test]
+    fn relink_keeps_edited_template_even_with_force() {
+        let repo = tempdir().unwrap();
+        let home = tempdir().unwrap();
+        let state = tempdir().unwrap();
+
+        let cfg_text = format!(
+            r#"
+[paths]
+HOME = "{home}"
+
+[[template]]
+src = "local.template"
+dst = "${{HOME}}/local.conf"
+prompts = []
+"#,
+            home = toml_path(home.path())
+        );
+        let cfg_path = synth_repo(repo.path(), &[("local.template", b"name = {{name}}\n")]);
+        fs::write(&cfg_path, cfg_text).unwrap();
+        let manifest_path = state.path().join("manifest.json");
+        let dst = home.path().join("local.conf");
+
+        // Seeded by krypt, so recorded in the manifest, then filled in.
+        link(&opts(cfg_path.clone(), manifest_path.clone(), false)).unwrap();
+        fs::write(&dst, b"name = me\n").unwrap();
+
+        for force in [false, true] {
+            let (u, l) = relink(&opts(cfg_path.clone(), manifest_path.clone(), force)).unwrap();
+            assert_eq!(u.templates_kept, 1, "force = {force}");
+            assert_eq!(u.drift_skipped, 0, "force = {force}");
+            assert_eq!(u.removed, 0, "force = {force}");
+            assert_eq!(l.templates_kept, 1, "force = {force}");
+            assert_eq!(fs::read(&dst).unwrap(), b"name = me\n", "force = {force}");
+            let m = Manifest::load(&manifest_path).unwrap().unwrap();
+            assert!(
+                m.entries.contains_key(&dst),
+                "force = {force}: still recorded"
+            );
+        }
     }
 
     #[test]

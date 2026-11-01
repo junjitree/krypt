@@ -113,7 +113,7 @@ enum Command {
     /// Remove every file recorded in the manifest.
     ///
     /// Drifted destinations are kept by default — pass `--force` to
-    /// delete them anyway.
+    /// delete them anyway. Edited `[[template]]` destinations are always kept.
     Unlink {
         /// Manifest path. Defaults to `${XDG_STATE}/krypt/manifest.json`.
         #[arg(long)]
@@ -436,9 +436,9 @@ struct DeployArgs {
     #[arg(long)]
     dry_run: bool,
 
-    /// On `link`: overwrite real conflicts; edited `[[template]]` destinations are
-    /// always kept. On `relink`: overwrite + force-remove drifted destinations
-    /// during the unlink half.
+    /// On `link`: overwrite real conflicts. On `relink`: overwrite + force-remove
+    /// drifted destinations during the unlink half. Edited `[[template]]`
+    /// destinations are always kept.
     #[arg(long)]
     force: bool,
 }
@@ -998,6 +998,12 @@ fn print_unlink_report(r: &UnlinkReport, dry_run: bool) {
     println!("  {verb}: {}", r.removed);
     if r.already_missing > 0 {
         println!("  already missing: {}", r.already_missing);
+    }
+    if r.templates_kept > 0 {
+        println!(
+            "  templates kept: {} (edited on this machine)",
+            r.templates_kept
+        );
     }
     if r.drift_skipped > 0 {
         println!(

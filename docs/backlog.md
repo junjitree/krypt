@@ -92,18 +92,6 @@ by hand. `krypt diff` does not help for a destination krypt never recorded,
 since it walks only the manifest. Listing each skipped `dst` (at least under
 `--dry-run`) would make the count actionable.
 
-### `unlink` / `relink` still treat edited templates as drift
-
-`link`, `diff` and `doctor` keep an edited `[[template]]` destination
-(`DriftRecord::is_local_edit`), but `deploy::unlink` does not: it counts one as
-`drift_skipped`, so `krypt relink` exits 1 on any machine with filled-in
-templates, and `relink --force` deletes them in its unlink half before `link`
-reseeds the blank template. Not changed with the `link` fix because `unlink` is
-meant to remove what krypt deployed, and whether that includes a template the
-user has since filled in is a call to make: skip them always (and forget them
-from the manifest), or keep today's drift handling but leave them out of the
-exit code.
-
 ### `krypt-core` and `krypt-cli` are not published to crates.io
 
 The `publish-crates` job in `.github/workflows/ci.yml` publishes only

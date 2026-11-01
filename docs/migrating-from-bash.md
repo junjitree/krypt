@@ -125,7 +125,8 @@ dst = "${HOME}/.gitconfig"
 
 Run `krypt link` to deploy (copy). `krypt link --dry-run` to plan.
 `krypt unlink` deletes every destination the manifest records, keeping drifted
-ones unless you pass `--force`.
+ones unless you pass `--force`, and always keeping edited `[[template]]`
+destinations (see below).
 
 A destination that already exists and does **not** match the manifest is
 reported as a conflict and skipped — `krypt link` will not clobber a file it

@@ -570,6 +570,31 @@ fn test_edited_template_is_not_a_conflict() {
     assert!(stdout.contains("1/2 entries dirty"), "{stdout}");
 }
 
+/// `krypt relink`, forced or not, keeps a `[[template]]` destination krypt
+/// seeded and the user then edited, and does not exit 1 over it.
+#[test]
+fn test_relink_keeps_edited_template() {
+    let env = Env::new();
+    let (_rp, work) = linked_elsewhere(&env);
+    fs::write(env.path(".local.conf"), b"name = me\n").expect("fill template");
+
+    for args in [&["relink"][..], &["relink", "--force"]] {
+        let out = cmd(&env)
+            .current_dir(&work)
+            .args(args)
+            .output()
+            .expect("run relink");
+        let stdout = String::from_utf8_lossy(&out.stdout);
+        assert!(out.status.success(), "{args:?}: {stdout}");
+        assert!(stdout.contains("templates kept: 1"), "{args:?}: {stdout}");
+        assert_eq!(
+            fs::read(env.path(".local.conf")).unwrap(),
+            b"name = me\n",
+            "{args:?}"
+        );
+    }
+}
+
 /// `krypt adopt <path>` imports a file krypt does not deploy yet into the
 /// recorded repo, and adopts the edits of one it does, in one call.
 #[test]
