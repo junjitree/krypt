@@ -8,6 +8,8 @@ patch bumps.
 
 ## [Unreleased]
 
+## [0.6.0] - 2026-11-01
+
 ### Fixed
 
 - **`krypt unlink` and `krypt relink` keep edited `[[template]]` destinations.**
