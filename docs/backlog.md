@@ -92,6 +92,15 @@ by hand. `krypt diff` does not help for a destination krypt never recorded,
 since it walks only the manifest. Listing each skipped `dst` (at least under
 `--dry-run`) would make the count actionable.
 
+### Pruning leaves empty destination directories behind
+
+When a `[[link]]` entry is dropped from the repo, `link`/`update` prune its
+deployed files but not the directories krypt created for them: retiring the
+mxaddict dotfiles' `.config/swaync/**/*` link on 2026-11-02 left an empty
+`~/.config/swaync/`. Removing a directory after a prune only when it is empty
+and krypt created it would need the manifest to record created directories,
+which it does not today.
+
 ### `krypt-core` and `krypt-cli` are not published to crates.io
 
 The `publish-crates` job in `.github/workflows/ci.yml` publishes only
